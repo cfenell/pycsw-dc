@@ -58,12 +58,36 @@ NAMESPACE = 'http://datacite.org/schema/kernel-4'
 NAMESPACES = {'datacite': NAMESPACE}
 
 
- XPATH_MAPPINGS = {
-     'pycsw:Identifier': 'datacite:identifier',
-     'pycsw:Creator': 'datacite:creators',
-     'pycsw:Title': 'datacite:title',
-     'pycsw:Publisher': 'datacite:publisher'
- }
+# Datacite schema required records
+# resourceType
+# identifier identifierType DOI
+# creators -> creator
+# titles -> title
+# publisher
+# publicationYear
+
+# Datacite schema optional records
+# subjects
+# contributors
+# dates
+# language
+# alternateIdentifiers
+# relatedIdentifiers
+# sizes
+# formats
+# version
+# rightsList
+# descriptions
+# geoLocations
+# fundingReferences
+
+XPATH_MAPPINGS = {
+     'pycsw:Identifier': 'identifier',
+     'pycsw:Creator': 'creators/creator',
+     'pycsw:Title': 'titles/title',
+     'pycsw:Publisher': 'publisher',
+     'pycsw:PublicationDate': 'publicationYear'
+}
 
 
 def write_record(result, esn, context, url=None):
@@ -83,7 +107,31 @@ def write_record(result, esn, context, url=None):
     node.attrib[util.nspath_eval('xsi:schemaLocation', context.namespaces)] = \
         '%s http://schema.datacite.org/meta/kernel-4.3/metadata.xsd' % NAMESPACE
 
-    ## DataCite  properties
+    ### DataCite  properties
+
+    ## Type
+    type = etree.SubElement(node, util.nspath_eval('resourceType', NAMESPACES))
+    type.text = "XML"
+    resTypeGeneral = "Dataset" #FIXME fetch this
+    assert resTypeGeneral in  [
+        "Audiovisual",
+        "Collection",
+        "DataPaper",
+        "Dataset",
+        "Event",
+        "Image",
+        "InteractiveResource",
+        "Model",
+        "PhysicalObject",
+        "Service",
+        "Software",
+        "Sound",
+        "Text",
+        "Workflow",
+        "Other"
+      ]
+    type.attrib["resourceTypeGeneral"] = resTypeGeneral
+    
     ## Identifier
     ident = etree.SubElement(node, util.nspath_eval('identifier', NAMESPACES))
     ident.text = util.getqattr(result, context.md_core_model['mappings']['pycsw:Identifier'])
@@ -135,27 +183,17 @@ def write_record(result, esn, context, url=None):
         subtitle = etree.SubElement(titles, util.nspath_eval('title', NAMESPACES))
         subtitle.attrib["titleType"] = "Subtitle"
         subtitle.text = sval
-
-
-    # Here 20210213
         
-    # Publisher
-    # val = "EISCAT Scientific Association"
+    ## Publisher
     val = util.getqattr(result, context.md_core_model['mappings']['pycsw:Publisher'])
-    etree.SubElement(node, util.nspath_eval('publisher', NAMESPACES)).text = val
+    etree.SubElement(node, util.nspath_eval('publisher', NAMESPACES)).text = val  # Free format string
 
     # PublicationYear
     val = util.getqattr(result, context.md_core_model['mappings']['pycsw:PublicationDate'])
+    # FIXME convert date to year in a general way. String 'YYYY' 
     etree.SubElement(node, util.nspath_eval('publicationYear', NAMESPACES)).text = val
 
-    # resourceType
-    restype = etree.SubElement(node, util.nspath_eval('resourceType', NAMESPACES))
-    val = util.getqattr(result, context.md_core_model['mappings']['pycsw:Format'])
-    restype.text = val  
-    val = util.getqattr(result, context.md_core_model['mappings']['pycsw:Type'])
-    restype.attrib["resourceTypeGeneral"] = basename(val) # FIXME check for allowed types
-
-    # End DataCite mandatory properties
-    # TODO add all optional DataCite properties
+    
+    ## End DataCite mandatory properties
+    ## TODO add all optional DataCite properties
     return node
-
