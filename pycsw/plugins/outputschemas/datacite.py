@@ -137,7 +137,7 @@ def write_record(result, esn, context, url=None):
     ident = etree.SubElement(node, util.nspath_eval('identifier', NAMESPACES))
     ident.text = util.getqattr(result, context.md_core_model['mappings']['pycsw:Identifier'])
     ident.attrib[util.nspath_eval('identifierType', NAMESPACES)] = "DOI"  #  NB DOI is mandatory for DataCite proper but we plan to use the schema with other IDs too
-    
+
     ## Creators
     cvals = util.getqattr(result, context.md_core_model['mappings']['pycsw:Creator']) #FIXME get multiple creators possible?
     creators = etree.SubElement(node, util.nspath_eval('creators', NAMESPACES))
