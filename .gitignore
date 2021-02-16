@@ -13,6 +13,8 @@ tests/results
 .coverage
 .tox
 .pytest_cache
+# sqlite
+**.db
 
 # test configurations
 /default.cfg
@@ -23,3 +25,7 @@ tests/results
 # shell files
 .env
 .envrc
+
+# emacs backups
+*\~
+\#*\#
