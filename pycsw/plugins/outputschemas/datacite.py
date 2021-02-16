@@ -55,7 +55,7 @@ Output: XML etree according to DataCite schema
 """
 
 NAMESPACE = 'http://datacite.org/schema/kernel-4'
-NAMESPACES = {'datacite': NAMESPACE}
+NAMESPACES = {'xml': 'http://www.w3.org/XML/1998/namespace','datacite': NAMESPACE}
 
 
 # Datacite schema required records
@@ -108,11 +108,12 @@ def write_record(result, esn, context, url=None):
         '%s http://schema.datacite.org/meta/kernel-4.3/metadata.xsd' % NAMESPACE
 
     ### DataCite  properties
-
+    print(result)
+    
     ## Type
     type = etree.SubElement(node, util.nspath_eval('resourceType', NAMESPACES))
     type.text = "XML"
-    resTypeGeneral = "Dataset" #FIXME fetch this
+    resTypeGeneral = basename(util.getqattr(result, context.md_core_model['mappings']['pycsw:Type']))
     assert resTypeGeneral in  [
         "Audiovisual",
         "Collection",
@@ -135,58 +136,59 @@ def write_record(result, esn, context, url=None):
     ## Identifier
     ident = etree.SubElement(node, util.nspath_eval('identifier', NAMESPACES))
     ident.text = util.getqattr(result, context.md_core_model['mappings']['pycsw:Identifier'])
-    ident.attrib["identifierType"] = "DOI"  #  FIXME Mandatory for DataCite harvesting but plan to use this schema with other IDs too
+    ident.attrib["identifierType"] = "DOI"  #  NB DOI is mandatory for DataCite proper but we plan to use the schema with other IDs too
     
     ## Creators
     cvals = util.getqattr(result, context.md_core_model['mappings']['pycsw:Creator']) #FIXME get multiple creators possible?
-    if cvals == None:
-        cvals = ['EISCAT Scientific Association']
     creators = etree.SubElement(node, util.nspath_eval('creators', NAMESPACES))
-    for cval in cvals:
-        creator = etree.SubElement(creators,  util.nspath_eval('creator', NAMESPACES))
-        creator.text = cval
-        creatorName = etree.SubElement(creator,  util.nspath_eval('creatorName', NAMESPACES))
-        creatorName.attrib['lang'] = "en"
-        # FIXME get name type personal, organizational ..
-        person_or_org_name = "org"
-        orgName = "EISCAT Scientific Association"
-        if person_or_org_name == "org":
-            # Get the org name
-            creatorName.attrib['nameType'] = "Organizational"
-            creatorName.text = orgName
-        elif person_or_org_name == "person":
-            lastName = 'Fixme'
-            firstName = 'Fixme'
-            creatorName.attrib['nameType'] = "Personal"
-            creatorName.text = "%s, %s" % (lastName, firstName)
-            avals = ""  # FIXME find multiple affiliation names...
-            for aval in avals:
-                creatorAffil = etree.SubElement(creator,  util.nspath_eval('affiliation', NAMESPACES)).text = aval
-                creatorAffil.attrib['affiliationIdentifier'] = "Fixme"
-                creatorAffil.attrib['affiliationIdentifierScheme'] = "Fixme"
-            if lastName:
-                etree.SubElement(creator,  util.nspath_eval('familyName', NAMESPACES)).text = lastName
-            if firstName:
-                etree.SubElement(creator,  util.nspath_eval('givenName', NAMESPACES)).text = firstName
-            nameIdentifier = "00001-00002-00003-00004"
-            if nameIdentifier:
-                creatorNameIdentifier = etree.SubElement(creator,  util.nspath_eval('nameIdentifier', NAMESPACES))
-                creatorNameIdentifier.text = nameIdentifier
-                creatorNameIdentifier.attrib['schemeURI']= "http://orcid.org/"
-                creatorNameIdentifier.attrib['nameIdentifierScheme'] = "ORCID"
-        else:
-            pass
+    if not cvals is None:
+        for cval in cvals:
+            creator = etree.SubElement(creators,  util.nspath_eval('creator', NAMESPACES))
+            creatorName = etree.SubElement(creator,  util.nspath_eval('creatorName', NAMESPACES))
+            creatorName.attrib['lang'] = "xml:en"
+            # FIXME get name type personal, organizational ..
+            person_or_org_name = "person"
+            if person_or_org_name == "org":
+                # Get the org name
+                creatorName.attrib['nameType'] = "Organizational"
+                creatorName.text = cval
+            elif person_or_org_name == "person":
+                cval = cval.split(",")
+                lastName = cval[0]
+                firstName = cval[1]
+                creatorName.attrib['nameType'] = "Personal"
+                creatorName.text = "%s, %s" % (lastName, firstName)
+                avals = ["EISCAT Scientific Association"]  # FIXME find affiliation names...
+                for aval in avals:
+                    creatorAffil = etree.SubElement(creator,  util.nspath_eval('affiliation', NAMESPACES)).text = aval
+                    creatorAffil.attrib['affiliationIdentifier'] = "Fixme"
+                    creatorAffil.attrib['affiliationIdentifierScheme'] = "Fixme"
+                if lastName:
+                    etree.SubElement(creator,  util.nspath_eval('familyName', NAMESPACES)).text = lastName
+                if firstName:
+                    etree.SubElement(creator,  util.nspath_eval('givenName', NAMESPACES)).text = firstName
+                nameIdentifier = "00001-00002-00003-00004"
+                if nameIdentifier:
+                    creatorNameIdentifier = etree.SubElement(creator,  util.nspath_eval('nameIdentifier', NAMESPACES))
+                    creatorNameIdentifier.text = nameIdentifier
+                    creatorNameIdentifier.attrib['schemeURI']= "http://orcid.org/"
+                    creatorNameIdentifier.attrib['nameIdentifierScheme'] = "ORCID"
+            else:
+                pass
 
     ## Title
     titles = etree.SubElement(node, util.nspath_eval('titles', NAMESPACES))
-    tvals = util.getqattr(result, context.md_core_model['mappings']['pycsw:Title']) #FIXME get multiple titles possible?
-    for tval in tvals:
-        etree.SubElement(titles, util.nspath_eval('title', NAMESPACES)).text = tval
-    svals = 'Fixme'  # FIXME are subtitles available in pycsw?
-    for sval in svals:
-        subtitle = etree.SubElement(titles, util.nspath_eval('title', NAMESPACES))
-        subtitle.attrib["titleType"] = "Subtitle"
-        subtitle.text = sval
+    #FIXME get multiple titles possible?
+    tval = util.getqattr(result, context.md_core_model['mappings']['pycsw:Title'])
+    # for tval in [tvals]:
+    title = etree.SubElement(titles, util.nspath_eval('title', NAMESPACES))
+    title.attrib["lang"]="xml:en" # FIXME
+    title.text = tval
+    #svals = ["Fixme"]  # FIXME are subtitles available in pycsw?
+    #for sval in svals:
+    #    subtitle = etree.SubElement(titles, util.nspath_eval('title', NAMESPACES))
+    #    subtitle.attrib["titleType"] = "Subtitle"
+    #    subtitle.text = sval
         
     ## Publisher
     val = util.getqattr(result, context.md_core_model['mappings']['pycsw:Publisher'])
@@ -196,7 +198,6 @@ def write_record(result, esn, context, url=None):
     val = util.getqattr(result, context.md_core_model['mappings']['pycsw:PublicationDate'])
     # FIXME convert date to year in a general way. String 'YYYY' 
     etree.SubElement(node, util.nspath_eval('publicationYear', NAMESPACES)).text = val
-
     
     ## End DataCite mandatory properties
     ## TODO add all optional DataCite properties
