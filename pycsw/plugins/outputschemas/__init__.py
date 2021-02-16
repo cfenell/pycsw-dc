@@ -27,5 +27,4 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 #
 # =================================================================
-
 __all__ = ['atom', 'datacite', 'dif', 'fgdc', 'gm03']
