@@ -158,8 +158,8 @@ def write_record(result, esn, context, url=None):
             avals = ""  # FIXME find multiple affiliation names...
             for aval in avals:
                 creatorAffil = etree.SubElement(creator,  util.nspath_eval('affiliation', NAMESPACES)).text = aval
-                creatorAffil.attribute['affiliationIdentifier', context.namespaces)] = "Fixme"
-                creatorAffil.attribute['affiliationIdentifierScheme', context.namespaces)] = "Fixme"
+                creatorAffil.attrib['affiliationIdentifier'] = "Fixme"
+                creatorAffil.attrib['affiliationIdentifierScheme'] = "Fixme"
             if lastName:
                 etree.SubElement(creator,  util.nspath_eval('familyName', NAMESPACES)).text = lastName
             if firstName:
