@@ -55,7 +55,7 @@ Output: XML etree according to DataCite schema
 """
 
 NAMESPACE = 'http://datacite.org/schema/kernel-4'
-NAMESPACES = {'xml': 'http://www.w3.org/XML/1998/namespace','datacite': NAMESPACE}
+NAMESPACES = {'xml': 'http://www.w3.org/XML/1998/namespace', 'datacite': NAMESPACE}
 
 
 # Datacite schema required records
@@ -145,7 +145,7 @@ def write_record(result, esn, context, url=None):
         for cval in cvals:
             creator = etree.SubElement(creators,  util.nspath_eval('creator', NAMESPACES))
             creatorName = etree.SubElement(creator,  util.nspath_eval('creatorName', NAMESPACES))
-            creatorName.attrib['lang'] = "xml:en"
+            creatorName.attrib[util.nspath_eval('xml:lang', NAMESPACES)] = "en"
             # FIXME get name type personal, organizational ..
             person_or_org_name = "person"
             if person_or_org_name == "org":
@@ -182,7 +182,7 @@ def write_record(result, esn, context, url=None):
     tval = util.getqattr(result, context.md_core_model['mappings']['pycsw:Title'])
     # for tval in [tvals]:
     title = etree.SubElement(titles, util.nspath_eval('title', NAMESPACES))
-    title.attrib["lang"]="xml:en" # FIXME
+    title.attrib[util.nspath_eval("xml:lang", NAMESPACES)]="en" # FIXME
     title.text = tval
     #svals = ["Fixme"]  # FIXME are subtitles available in pycsw?
     #for sval in svals:
