@@ -139,13 +139,17 @@ def write_record(result, esn, context, url=None):
     
     ## Creators
     cvals = util.getqattr(result, context.md_core_model['mappings']['pycsw:Creator']) #FIXME get multiple creators possible?
+    if cvals == None:
+        cvals = ['EISCAT Scientific Association']
     creators = etree.SubElement(node, util.nspath_eval('creators', NAMESPACES))
     for cval in cvals:
         creator = etree.SubElement(creators,  util.nspath_eval('creator', NAMESPACES))
         creator.text = cval
         creatorName = etree.SubElement(creator,  util.nspath_eval('creatorName', NAMESPACES))
-        creatorName.attrib['xml:lang'] = "en"
+        creatorName.attrib['lang'] = "en"
         # FIXME get name type personal, organizational ..
+        person_or_org_name = "org"
+        orgName = "EISCAT Scientific Association"
         if person_or_org_name == "org":
             # Get the org name
             creatorName.attrib['nameType'] = "Organizational"
@@ -177,7 +181,7 @@ def write_record(result, esn, context, url=None):
     titles = etree.SubElement(node, util.nspath_eval('titles', NAMESPACES))
     tvals = util.getqattr(result, context.md_core_model['mappings']['pycsw:Title']) #FIXME get multiple titles possible?
     for tval in tvals:
-        etree.SubElement(titles, util.nspath_eval('title', NAMESPACES)).text = val
+        etree.SubElement(titles, util.nspath_eval('title', NAMESPACES)).text = tval
     svals = 'Fixme'  # FIXME are subtitles available in pycsw?
     for sval in svals:
         subtitle = etree.SubElement(titles, util.nspath_eval('title', NAMESPACES))
