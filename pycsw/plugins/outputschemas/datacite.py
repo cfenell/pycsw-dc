@@ -131,12 +131,12 @@ def write_record(result, esn, context, url=None):
         "Workflow",
         "Other"
       ]
-    type.attrib["resourceTypeGeneral"] = resTypeGeneral
+    type.attrib[util.nspath_eval('resourceTypeGeneral', NAMESPACES)] = resTypeGeneral
     
     ## Identifier
     ident = etree.SubElement(node, util.nspath_eval('identifier', NAMESPACES))
     ident.text = util.getqattr(result, context.md_core_model['mappings']['pycsw:Identifier'])
-    ident.attrib["identifierType"] = "DOI"  #  NB DOI is mandatory for DataCite proper but we plan to use the schema with other IDs too
+    ident.attrib[util.nspath_eval('identifierType', NAMESPACES)] = "DOI"  #  NB DOI is mandatory for DataCite proper but we plan to use the schema with other IDs too
     
     ## Creators
     cvals = util.getqattr(result, context.md_core_model['mappings']['pycsw:Creator']) #FIXME get multiple creators possible?
@@ -150,19 +150,19 @@ def write_record(result, esn, context, url=None):
             person_or_org_name = "person"
             if person_or_org_name == "org":
                 # Get the org name
-                creatorName.attrib['nameType'] = "Organizational"
+                creatorName.attrib[util.nspath_eval('nameType', NAMESPACES)] = "Organizational"
                 creatorName.text = cval
             elif person_or_org_name == "person":
                 cval = cval.split(",")
                 lastName = cval[0]
                 firstName = cval[1]
-                creatorName.attrib['nameType'] = "Personal"
+                creatorName.attrib[util.nspath_eval('nameType', NAMESPACES)] = "Personal"
                 creatorName.text = "%s, %s" % (lastName, firstName)
                 avals = ["EISCAT Scientific Association"]  # FIXME find affiliation names...
                 for aval in avals:
                     creatorAffil = etree.SubElement(creator,  util.nspath_eval('affiliation', NAMESPACES)).text = aval
-                    creatorAffil.attrib['affiliationIdentifier'] = "Fixme"
-                    creatorAffil.attrib['affiliationIdentifierScheme'] = "Fixme"
+                    creatorAffil.attrib[util.nspath_eval('affiliationIdentifier', NAMESPACES)] = "Fixme"
+                    creatorAffil.attrib[util.nspath_eval('affiliationIdentifierScheme', NAMESPACES)] = "Fixme"
                 if lastName:
                     etree.SubElement(creator,  util.nspath_eval('familyName', NAMESPACES)).text = lastName
                 if firstName:
@@ -171,8 +171,8 @@ def write_record(result, esn, context, url=None):
                 if nameIdentifier:
                     creatorNameIdentifier = etree.SubElement(creator,  util.nspath_eval('nameIdentifier', NAMESPACES))
                     creatorNameIdentifier.text = nameIdentifier
-                    creatorNameIdentifier.attrib['schemeURI']= "http://orcid.org/"
-                    creatorNameIdentifier.attrib['nameIdentifierScheme'] = "ORCID"
+                    creatorNameIdentifier.attrib[util.nspath_eval('schemeURI', NAMESPACES)]= "http://orcid.org/"
+                    creatorNameIdentifier.attrib[util.nspath_eval('nameIdentifierScheme', NAMESPACES)] = "ORCID"
             else:
                 pass
 
