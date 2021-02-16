@@ -44,7 +44,8 @@ class OAIPMH(object):
         self.namespaces = {
             'oai': 'http://www.openarchives.org/OAI/2.0/',
             'oai_dc': 'http://www.openarchives.org/OAI/2.0/oai_dc/',
-            'xsi': 'http://www.w3.org/2001/XMLSchema-instance'
+            'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+            'datacite': 'http://datacite.org/schema/kernel-4'
         }
         self.request_model = {
             'Identify': [],
