@@ -15,6 +15,7 @@ tests/results
 .pytest_cache
 # sqlite
 **.db
+**.xml
 
 # test configurations
 /default.cfg
