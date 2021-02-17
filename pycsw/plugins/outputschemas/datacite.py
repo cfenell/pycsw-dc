@@ -45,6 +45,7 @@
 from pycsw.core import util
 from pycsw.core.etree import etree
 from os.path import basename
+from datetime import datetime
 
 """
 datacite.py
@@ -91,12 +92,10 @@ XPATH_MAPPINGS = {
 
 
 def write_record(result, esn, context, url=None):
-    
     """
     Main function
     Return csw:SearchResults child as lxml.etree.Element
     """
-
     typename = util.getqattr(result, context.md_core_model['mappings']['pycsw:Typename'])
     # Check if we already have DataCite formatted metadata
     if esn == 'full' and typename == 'datacite':
@@ -106,11 +105,7 @@ def write_record(result, esn, context, url=None):
     node = etree.Element(util.nspath_eval('resource', NAMESPACES))
     node.attrib[util.nspath_eval('xsi:schemaLocation', context.namespaces)] = \
         '%s http://schema.datacite.org/meta/kernel-4.3/metadata.xsd' % NAMESPACE
-
-    ### DataCite  properties
-    print(result)
-    
-    ## Type
+    # Type
     type = etree.SubElement(node, util.nspath_eval('resourceType', NAMESPACES))
     type.text = "XML"
     resTypeGeneral = basename(util.getqattr(result, context.md_core_model['mappings']['pycsw:Type']))
@@ -132,73 +127,78 @@ def write_record(result, esn, context, url=None):
         "Other"
       ]
     type.attrib[util.nspath_eval('resourceTypeGeneral', NAMESPACES)] = resTypeGeneral
-    
-    ## Identifier
+    # Identifier
     ident = etree.SubElement(node, util.nspath_eval('identifier', NAMESPACES))
-    ident.text = util.getqattr(result, context.md_core_model['mappings']['pycsw:Identifier'])
-    ident.attrib[util.nspath_eval('identifierType', NAMESPACES)] = "DOI"  #  NB DOI is mandatory for DataCite proper but we plan to use the schema with other IDs too
-
-    ## Creators
-    cvals = util.getqattr(result, context.md_core_model['mappings']['pycsw:Creator']) #FIXME get multiple creators possible?
+    ival = util.getqattr(result, context.md_core_model['mappings']['pycsw:Identifier'])
+    ident.text = ival
+    #Identifier type:
+    # NB DOI is mandatory for DataCite proper but we plan to use the schema with other IDs too. Modify as necessary.
+    if ival.lower().startswith("doi"):
+        idType = "DOI"
+    elif ival.lower().startswith("handle"):
+        idType = "Handle"
+    elif ival.lower().startswith("urn"):
+        idType = "URN"
+    ident.attrib[util.nspath_eval('identifierType', NAMESPACES)] = idType or "DOI"
+    # Creators
     creators = etree.SubElement(node, util.nspath_eval('creators', NAMESPACES))
-    if not cvals is None:
-        for cval in cvals:
-            creator = etree.SubElement(creators,  util.nspath_eval('creator', NAMESPACES))
-            creatorName = etree.SubElement(creator,  util.nspath_eval('creatorName', NAMESPACES))
-            creatorName.attrib[util.nspath_eval('xml:lang', NAMESPACES)] = "en"
-            # FIXME get name type personal, organizational ..
-            person_or_org_name = "person"
-            if person_or_org_name == "org":
-                # Get the org name
-                creatorName.attrib[util.nspath_eval('nameType', NAMESPACES)] = "Organizational"
-                creatorName.text = cval
-            elif person_or_org_name == "person":
-                cval = cval.split(",")
-                lastName = cval[0]
-                firstName = cval[1]
-                creatorName.attrib[util.nspath_eval('nameType', NAMESPACES)] = "Personal"
-                creatorName.text = "%s, %s" % (lastName, firstName)
-                avals = ["EISCAT Scientific Association"]  # FIXME find affiliation names...
-                for aval in avals:
-                    creatorAffil = etree.SubElement(creator,  util.nspath_eval('affiliation', NAMESPACES)).text = aval
-                    creatorAffil.attrib[util.nspath_eval('affiliationIdentifier', NAMESPACES)] = "Fixme"
-                    creatorAffil.attrib[util.nspath_eval('affiliationIdentifierScheme', NAMESPACES)] = "Fixme"
-                if lastName:
-                    etree.SubElement(creator,  util.nspath_eval('familyName', NAMESPACES)).text = lastName
-                if firstName:
-                    etree.SubElement(creator,  util.nspath_eval('givenName', NAMESPACES)).text = firstName
-                nameIdentifier = "00001-00002-00003-00004"
-                if nameIdentifier:
-                    creatorNameIdentifier = etree.SubElement(creator,  util.nspath_eval('nameIdentifier', NAMESPACES))
-                    creatorNameIdentifier.text = nameIdentifier
-                    creatorNameIdentifier.attrib[util.nspath_eval('schemeURI', NAMESPACES)]= "http://orcid.org/"
-                    creatorNameIdentifier.attrib[util.nspath_eval('nameIdentifierScheme', NAMESPACES)] = "ORCID"
-            else:
-                pass
-
-    ## Title
-    titles = etree.SubElement(node, util.nspath_eval('titles', NAMESPACES))
-    #FIXME get multiple titles possible?
-    tval = util.getqattr(result, context.md_core_model['mappings']['pycsw:Title'])
-    # for tval in [tvals]:
-    title = etree.SubElement(titles, util.nspath_eval('title', NAMESPACES))
-    title.attrib[util.nspath_eval("xml:lang", NAMESPACES)]="en" # FIXME
-    title.text = tval
-    #svals = ["Fixme"]  # FIXME are subtitles available in pycsw?
-    #for sval in svals:
-    #    subtitle = etree.SubElement(titles, util.nspath_eval('title', NAMESPACES))
-    #    subtitle.attrib["titleType"] = "Subtitle"
-    #    subtitle.text = sval
-        
-    ## Publisher
-    val = util.getqattr(result, context.md_core_model['mappings']['pycsw:Publisher'])
-    etree.SubElement(node, util.nspath_eval('publisher', NAMESPACES)).text = val  # Free format string
-
-    # PublicationYear
-    val = util.getqattr(result, context.md_core_model['mappings']['pycsw:PublicationDate'])
-    # FIXME convert date to year in a general way. String 'YYYY' 
-    etree.SubElement(node, util.nspath_eval('publicationYear', NAMESPACES)).text = val
+    cval = util.getqattr(result, context.md_core_model['mappings']['pycsw:OrganizationName'])
+    if cval:
+        creator = etree.SubElement(creators,  util.nspath_eval('creator', NAMESPACES))
+        creatorName = etree.SubElement(creator,  util.nspath_eval('creatorName', NAMESPACES))
+        # FIXME difference between Language and ResourceLanguage?
+        creatorName.attrib[util.nspath_eval('xml:lang', NAMESPACES)] = util.getqattr(context.md_core_model['mappings']['pycsw:Language']) or "en" #Default to English
+        creatorName.attrib[util.nspath_eval('nameType', NAMESPACES)] = "Organizational"
     
-    ## End DataCite mandatory properties
-    ## TODO add all optional DataCite properties
+        creatorName.text = cval
+    # Person NB assuming Lastname, Firstname
+    cval = util.getqattr(result, context.md_core_model['mappings']['pycsw:Creator'])
+    if cval:
+        creator = etree.SubElement(creators,  util.nspath_eval('creator', NAMESPACES))
+        creatorName = etree.SubElement(creator,  util.nspath_eval('creatorName', NAMESPACES))
+        creatorName.attrib[util.nspath_eval('nameType', NAMESPACES)] = "Personal"
+        creatorName.text = cval
+        cval = cval.split(",")
+        lastName = cval[0]
+        firstName = cval[1]
+        if lastName:
+            etree.SubElement(creator,  util.nspath_eval('familyName', NAMESPACES)).text = lastName
+        if firstName:
+            etree.SubElement(creator,  util.nspath_eval('givenName', NAMESPACES)).text = firstName
+        # FIXME are affiliations available?
+        #avals = ["EISCAT Scientific Association"] 
+        #for aval in avals:
+        #    creatorAffil = etree.SubElement(creator,  util.nspath_eval('affiliation', NAMESPACES)).text = aval
+        #    creatorAffil.attrib[util.nspath_eval('affiliationIdentifier', NAMESPACES)] = "Fixme"
+        #    creatorAffil.attrib[util.nspath_eval('affiliationIdentifierScheme', NAMESPACES)] = "Fixme"
+        # FIXME are other identifiers available? eg ORCID
+        #nameIdentifier = "00001-00002-00003-00004"
+        #if nameIdentifier:
+        #    creatorNameIdentifier = etree.SubElement(creator,  util.nspath_eval('nameIdentifier', NAMESPACES))
+        #    creatorNameIdentifier.text = nameIdentifier
+        #    creatorNameIdentifier.attrib[util.nspath_eval('schemeURI', NAMESPACES)]= "http://orcid.org/"
+        #    creatorNameIdentifier.attrib[util.nspath_eval('nameIdentifierScheme', NAMESPACES)] = "ORCID"
+    # Title
+    titles = etree.SubElement(node, util.nspath_eval('titles', NAMESPACES))
+    tval = util.getqattr(result, context.md_core_model['mappings']['pycsw:Title'])
+    title = etree.SubElement(titles, util.nspath_eval('title', NAMESPACES))
+    title.attrib[util.nspath_eval("xml:lang", NAMESPACES)]= util.getqattr(result, context.md_core_model['mappings']['pycsw:Language']) or "en"
+    title.text = tval
+    sval = util.getqattr(result, context.md_core_model['mappings']['pycsw:AlternateTitle'])
+    if sval:
+        subtitle = etree.SubElement(titles, util.nspath_eval('title', NAMESPACES))
+        subtitle.attrib["titleType"] = "Subtitle"
+        subtitle.text = sval
+    # Publisher
+    etree.SubElement(node, util.nspath_eval('publisher', NAMESPACES)).text = util.getqattr(result, context.md_core_model['mappings']['pycsw:Publisher'])
+    # PublicationYear
+    dval = util.getqattr(result, context.md_core_model['mappings']['pycsw:PublicationDate'])
+    if dval:
+        dt = datetime.fromisoformat(dval)
+        dt = dt.strftime("%Y")
+    else:
+        dt = "9999" #Date missing
+    etree.SubElement(node, util.nspath_eval('publicationYear', NAMESPACES)).text = dt
+    # End DataCite mandatory properties
+    # TODO add all optional DataCite properties
     return node
