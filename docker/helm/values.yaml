@@ -45,13 +45,14 @@ pycsw:
       # domaincounts: true
       # spatial_ranking: true
       profiles: apiso
+      # workers: 2
     manager:
       transactions: "false"
       allowed_ips: 127.0.0.1
       # csw_harvest_pagesize: 10
     metadata:
       identification_title: pycsw Geospatial Catalogue
-      identification_abstract: pycsw is an OGC CSW server implementation written in Python
+      identification_abstract: pycsw is an OARec and OGC CSW server implementation written in Python
       identification_keywords: catalogue,discovery,metadata
       identification_keywords_type: theme
       identification_fees: None

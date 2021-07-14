@@ -50,7 +50,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.exc import ProgrammingError
 
 from pycsw.core import admin
-from pycsw.server import EnvInterpolation
+from pycsw.core.util import EnvInterpolation
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ def launch_pycsw(pycsw_config, workers=2, reload=False):
         "--access-logfile=-",
         "--error-logfile=-",
         "--workers={}".format(workers),
-        "pycsw.wsgi",
+        "pycsw.wsgi_flask:APP",
 
     ]
     logger.debug("Launching pycsw with {} ...".format(" ".join(execution_args)))
@@ -174,5 +174,9 @@ if __name__ == "__main__":
         level = config.get("server", "loglevel").upper()
     except configparser.NoOptionError:
         level = "WARNING"
+    try:
+        workers = int(config.get("server", "workers"))
+    except configparser.NoOptionError:
+        workers = args.workers
     logging.basicConfig(level=getattr(logging, level))
-    launch_pycsw(config, workers=args.workers, reload=args.reload)
+    launch_pycsw(config, workers=workers, reload=args.reload)

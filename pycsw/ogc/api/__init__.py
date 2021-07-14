@@ -1,9 +1,8 @@
-#!/bin/sh
 # =================================================================
 #
 # Authors: Tom Kralidis <tomkralidis@gmail.com>
 #
-# Copyright (c) 2015 Tom Kralidis
+# Copyright (c) 2021 Tom Kralidis
 #
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
@@ -27,8 +26,3 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 #
 # =================================================================
-
-# run pylint without warnings about docstrings on first line
-# and suppress reporting
-
-pylint -r n -d C0111 $1

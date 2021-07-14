@@ -42,6 +42,7 @@ QUERY_PARAMETERS = [
     'q',
     'bbox',
     'time',
+    'eo:parentidentifier',
     'eo:processinglevel',
     'eo:producttype',
     'eo:platform',
@@ -67,7 +68,8 @@ class OpenSearch(object):
             'eo': 'http://a9.com/-/opensearch/extensions/eo/1.0/',
             'geo': 'http://a9.com/-/opensearch/extensions/geo/1.0/',
             'os': 'http://a9.com/-/spec/opensearch/1.1/',
-            'time': 'http://a9.com/-/opensearch/extensions/time/1.0/'
+            'time': 'http://a9.com/-/opensearch/extensions/time/1.0/',
+#            'georss': 'http://www.georss.org/georss'
         }
 
         self.context = context
@@ -131,6 +133,9 @@ class OpenSearch(object):
             for rec in self.exml.xpath('//atom:entry',
                         namespaces=self.context.namespaces):
                 node.append(rec)
+            for rec in self.exml.xpath('//csw:Record|//csw:BriefRecord|//csw:SummaryRecord',
+                        namespaces=self.context.namespaces):
+                node.append(self.cswrecord2atom(rec))
         elif operation_name == 'Capabilities':
             node = etree.Element(util.nspath_eval('os:OpenSearchDescription', self.namespaces), nsmap=self.namespaces)
             etree.SubElement(node, util.nspath_eval('os:ShortName', self.namespaces)).text = self.exml.xpath('//ows:Title', namespaces=self.context.namespaces)[0].text
@@ -161,6 +166,7 @@ class OpenSearch(object):
                 'eo:instrument': '{eo:instrument?}',
                 'eo:orbitDirection': '{eo:orbitDirection?}',
                 'eo:orbitNumber': '{eo:orbitNumber?}',
+                'eo:parentIdentifier': '{eo:parentIdentifier?}',
                 'eo:platform': '{eo:platform?}',
                 'eo:processingLevel': '{eo:processingLevel?}',
                 'eo:productType': '{eo:productType?}',
@@ -222,18 +228,24 @@ class OpenSearch(object):
 
             etree.SubElement(node, util.nspath_eval('os:Query', self.context.namespaces), role='request')
 
-            etree.SubElement(node, util.nspath_eval('os:totalResults',
-                        self.context.namespaces)).text = self.exml.xpath(
-                        '//@numberOfRecordsMatched')[0]
+            matched = sum(int(x) for x in self.exml.xpath('//@numberOfRecordsMatched'))
+
+            etree.SubElement(node, util.nspath_eval('os:totalResults', self.context.namespaces)).text = str(matched)
+
             etree.SubElement(node, util.nspath_eval('os:startIndex',
                         self.context.namespaces)).text = str(startindex)
-            etree.SubElement(node, util.nspath_eval('os:itemsPerPage',
-                        self.context.namespaces)).text = self.exml.xpath(
-                        '//@numberOfRecordsReturned')[0]
 
-            for rec in self.exml.xpath('//atom:entry',
-                        namespaces=self.context.namespaces):
+            returned = sum(int(x) for x in self.exml.xpath('//@numberOfRecordsReturned'))
+
+            etree.SubElement(node, util.nspath_eval('os:itemsPerPage', self.context.namespaces)).text = str(returned)
+
+            for rec in self.exml.xpath('//atom:entry', namespaces=self.context.namespaces):
+                LOGGER.debug('ADDING ATOM ENTRY')
                 node.append(rec)
+
+            for rec in self.exml.xpath('//csw30:Record|//csw30:BriefRecord|//csw30:SummaryRecord', namespaces=self.context.namespaces):
+                node.append(self.cswrecord2atom(rec))
+
         elif response_name == 'Capabilities':
             node = etree.Element(util.nspath_eval('os:OpenSearchDescription', self.namespaces), nsmap=self.namespaces)
             etree.SubElement(node, util.nspath_eval('os:ShortName', self.namespaces)).text = self.exml.xpath('//ows20:Title', namespaces=self.context.namespaces)[0].text[:16]
@@ -265,6 +277,7 @@ class OpenSearch(object):
                 'eo:instrument': '{eo:instrument?}',
                 'eo:orbitDirection': '{eo:orbitDirection?}',
                 'eo:orbitNumber': '{eo:orbitNumber?}',
+                'eo:parentIdentifier': '{eo:parentIdentifier?}',
                 'eo:platform': '{eo:platform?}',
                 'eo:processingLevel': '{eo:processingLevel?}',
                 'eo:productType': '{eo:productType?}',
@@ -280,7 +293,7 @@ class OpenSearch(object):
             node1 = etree.SubElement(node, util.nspath_eval('os:Url', self.namespaces))
             node1.set('type', 'application/atom+xml')
 
-            kvps['outputformat'] = 'application/atom%%2Bxml'
+            kvps['outputformat'] = r'application%2Fatom%2Bxml'
             kvps['mode'] = 'opensearch'
 
             node1.set('template', '%s%s' % (self.bind_url,
@@ -322,6 +335,42 @@ class OpenSearch(object):
                 node = rec
         return node
 
+    def cswrecord2atom(self, rec):
+        entry = etree.Element(util.nspath_eval('atom:entry', self.namespaces))
+
+        etree.SubElement(entry, util.nspath_eval('atom:id', self.context.namespaces)).text = rec.xpath('dc:identifier', namespaces=self.context.namespaces)[0].text
+        etree.SubElement(entry, util.nspath_eval('dc:identifier', self.context.namespaces)).text = rec.xpath('dc:identifier', namespaces=self.context.namespaces)[0].text
+        etree.SubElement(entry, util.nspath_eval('atom:title', self.context.namespaces)).text = rec.xpath('dc:title', namespaces=self.context.namespaces)[0].text
+
+        dc_date = rec.xpath('dc:date', namespaces=self.context.namespaces)
+        if dc_date:
+            etree.SubElement(entry, util.nspath_eval('atom:updated', self.context.namespaces)).text = dc_date[0].text
+
+        for s in rec.xpath('dc:subject', namespaces=self.context.namespaces):
+            etree.SubElement(entry, util.nspath_eval('atom:category', self.context.namespaces), term=s.text)
+
+        for d in rec.xpath('dct:references', namespaces=self.context.namespaces):
+            link = etree.SubElement(entry, util.nspath_eval('atom:link', self.context.namespaces))
+            link.attrib['href'] = d.text
+
+            scheme = d.attrib.get('scheme')
+            if scheme is not None:
+                if scheme == 'enclosure':
+                    link.attrib['rel'] = scheme
+                    link.attrib['type'] = 'application/octet-stream'
+                else:
+                    link.attrib['type'] = scheme
+
+        bbox = rec.xpath('ows:BoundingBox|ows20:BoundingBox', namespaces=self.context.namespaces)
+        if bbox:
+            where = etree.SubElement(entry, util.nspath_eval('georss:where', {'georss': 'http://www.georss.org/georss'}))
+            envelope = etree.SubElement(where, util.nspath_eval('gml:Envelope', self.context.namespaces))
+            envelope.attrib['srsName'] = bbox[0].attrib.get('crs')
+            etree.SubElement(envelope, util.nspath_eval('gml:lowerCorner', self.context.namespaces)).text = bbox[0].xpath('ows:LowerCorner|ows20:LowerCorner', namespaces=self.context.namespaces)[0].text
+            etree.SubElement(envelope, util.nspath_eval('gml:upperCorner', self.context.namespaces)).text = bbox[0].xpath('ows:UpperCorner|ows20:UpperCorner', namespaces=self.context.namespaces)[0].text
+
+        return entry
+
 
 def kvp2filterxml(kvp, context, profiles, fes_version='1.0'):
     ''' transform kvp to filter XML string '''
@@ -331,6 +380,7 @@ def kvp2filterxml(kvp, context, profiles, fes_version='1.0'):
     anytext_elements = []
     query_temporal_by_iso = False
 
+    eo_parentidentifier_element = None
     eo_bands_element = None
     eo_cloudcover_element = None
     eo_instrument_element = None
@@ -536,6 +586,14 @@ def kvp2filterxml(kvp, context, profiles, fes_version='1.0'):
             LOGGER.error(errortext)
 
     LOGGER.debug('Processing EO queryables')
+    if 'eo:parentidentifier' in kvp:
+        par_count += 1
+        eo_parentidentifier_element = etree.Element(util.nspath_eval('ogc:PropertyIsEqualTo', context.namespaces))
+        etree.SubElement(eo_parentidentifier_element,
+           util.nspath_eval('ogc:PropertyName', context.namespaces)).text = 'apiso:ParentIdentifier'
+        etree.SubElement(eo_parentidentifier_element, util.nspath_eval(
+            'ogc:Literal', context.namespaces)).text = kvp['eo:parentidentifier']
+
     if 'eo:producttype' in kvp:
         par_count += 1
         eo_producttype_element = etree.Element(util.nspath_eval('ogc:PropertyIsLike', context.namespaces),
@@ -580,11 +638,7 @@ def kvp2filterxml(kvp, context, profiles, fes_version='1.0'):
 
     if 'eo:cloudcover' in kvp:
         par_count += 1
-        eo_cloudcover_element = etree.Element(util.nspath_eval('ogc:PropertyIsEqualTo', context.namespaces))
-        etree.SubElement(eo_cloudcover_element,
-           util.nspath_eval('ogc:PropertyName', context.namespaces)).text = 'apiso:CloudCover'
-        etree.SubElement(eo_cloudcover_element, util.nspath_eval(
-            'ogc:Literal', context.namespaces)).text = kvp['eo:cloudcover']
+        eo_cloudcover_element = evaluate_literal(context, 'apiso:CloudCover', kvp['eo:cloudcover'])
 
     if 'eo:snowcover' in kvp:
         par_count += 1
@@ -659,14 +713,127 @@ def kvp2filterxml(kvp, context, profiles, fes_version='1.0'):
     for eo_element in [eo_producttype_element, eo_platform_element, eo_instrument_element,
                        eo_sensortype_element, eo_cloudcover_element, eo_snowcover_element,
                        eo_bands_element, eo_orbitnumber_element, eo_orbitdirection_element,
-                       eo_processinglevel_element]:
+                       eo_processinglevel_element, eo_parentidentifier_element]:
         if eo_element is not None:
             node_to_append.append(eo_element)
 
     # Render etree to string XML
     LOGGER.debug(etree.tostring(root, encoding='unicode'))
-    return etree.tostring(root, encoding='unicode')
+    filterstring = etree.tostring(root, encoding='unicode')
+    if fes_version == '2.0':
+        filterstring = filterstring.replace('PropertyName', 'ValueReference')\
+                                   .replace('xmlns:ogc="http://www.opengis.net/ogc"', 'xmlns:fes20="http://www.opengis.net/fes/2.0"')\
+                                   .replace('ogc:', 'fes20:')
+    return filterstring
 
+
+def evaluate_literal(context, pname, pvalue):
+    """
+    Transforms OpenSearch EO mathematical notation
+    to OGC FES syntax
+
+    :param pname: parameter name
+    :param pvalue: parameter value
+
+    :returns: lxml Element of predicate
+    """
+
+    LOGGER.debug('property name: {}'.format(pname))
+    LOGGER.debug('property value: {}'.format(pvalue))
+
+    if pvalue.startswith('{') and pvalue.endswith('}'):
+        # {n1,n2,…} equals to field=n1 OR field=n2 OR …
+        values = pvalue.lstrip('{').rstrip('}').split(',')
+        el = etree.Element(util.nspath_eval('ogc:Or', context.namespaces))
+
+        for value in values:
+            el2 = etree.SubElement(el, util.nspath_eval('ogc:PropertyIsEqualTo', context.namespaces))
+            etree.SubElement(el2, util.nspath_eval('ogc:PropertyName', context.namespaces)).text = pname
+            etree.SubElement(el2, util.nspath_eval('ogc:Literal', context.namespaces)).text = value
+
+    elif pvalue.startswith('[') and pvalue.endswith(']'):
+        # [n1,n2] equal to n1 <= field <= n2
+        values = pvalue.lstrip('[').rstrip(']').split(',')
+        el = etree.Element(util.nspath_eval('ogc:And', context.namespaces))
+
+        el2 = etree.SubElement(el, util.nspath_eval('ogc:PropertyIsLessThanOrEqualTo', context.namespaces))
+        etree.SubElement(el2, util.nspath_eval('ogc:PropertyName', context.namespaces)).text = pname
+        etree.SubElement(el2, util.nspath_eval('ogc:Literal', context.namespaces)).text = values[0]
+
+        el3 = etree.SubElement(el, util.nspath_eval('ogc:PropertyIsGreaterThanOrEqualTo', context.namespaces))
+        etree.SubElement(el3, util.nspath_eval('ogc:PropertyName', context.namespaces)).text = pname
+        etree.SubElement(el3, util.nspath_eval('ogc:Literal', context.namespaces)).text = values[1]
+
+    elif pvalue.startswith(']') and pvalue.endswith('['):
+        # ]n1,n2[ equals to n1 < field < n2
+        values = pvalue.lstrip(']').rstrip('[').split(',')
+        el = etree.Element(util.nspath_eval('ogc:And', context.namespaces))
+
+        el2 = etree.SubElement(el, util.nspath_eval('ogc:PropertyIsLessThan', context.namespaces))
+        etree.SubElement(el2, util.nspath_eval('ogc:PropertyName', context.namespaces)).text = pname
+        etree.SubElement(el2, util.nspath_eval('ogc:Literal', context.namespaces)).text = values[0]
+
+        el3 = etree.SubElement(el, util.nspath_eval('ogc:PropertyIsGreaterThan', context.namespaces))
+        etree.SubElement(el3, util.nspath_eval('ogc:PropertyName', context.namespaces)).text = pname
+        etree.SubElement(el3, util.nspath_eval('ogc:Literal', context.namespaces)).text = values[1]
+
+    elif pvalue.startswith('['):
+        # [n1 equals to n1<= field
+        el = etree.Element(util.nspath_eval('ogc:PropertyIsGreaterThanOrEqualTo', context.namespaces))
+        etree.SubElement(el, util.nspath_eval('ogc:PropertyName', context.namespaces)).text = pname
+        etree.SubElement(el, util.nspath_eval('ogc:Literal', context.namespaces)).text = pvalue.lstrip('[')
+
+    elif pvalue.endswith(']'):
+        # n2] equals to field <= n2
+        el = etree.Element(util.nspath_eval('ogc:PropertyIsLessThanOrEqualTo', context.namespaces))
+        etree.SubElement(el, util.nspath_eval('ogc:PropertyName', context.namespaces)).text = pname
+        etree.SubElement(el, util.nspath_eval('ogc:Literal', context.namespaces)).text = pvalue.rstrip(']')
+
+    elif pvalue.startswith('[') and pvalue.endswith('['):
+        # [n1,n2[ equals to n1 <= field < n2
+        values = pvalue.lstrip('[').rstrip('[').split(',')
+        el = etree.Element(util.nspath_eval('ogc:And', context.namespaces))
+
+        el2 = etree.SubElement(el, util.nspath_eval('ogc:PropertyIsLessThanOrEqualTo', context.namespaces))
+        etree.SubElement(el2, util.nspath_eval('ogc:PropertyName', context.namespaces)).text = pname
+        etree.SubElement(el2, util.nspath_eval('ogc:Literal', context.namespaces)).text = values[0]
+
+        el3 = etree.SubElement(el, util.nspath_eval('ogc:PropertyIsGreaterThan', context.namespaces))
+        etree.SubElement(el3, util.nspath_eval('ogc:PropertyName', context.namespaces)).text = pname
+        etree.SubElement(el3, util.nspath_eval('ogc:Literal', context.namespaces)).text = values[1]
+
+    elif pvalue.startswith(']') and pvalue.endswith(']'):
+        # ]n1,n2] equal to n1 < field <= n2
+        values = pvalue.lstrip(']').rstrip(']').split(',')
+        el = etree.Element(util.nspath_eval('ogc:And', context.namespaces))
+
+        el2 = etree.SubElement(el, util.nspath_eval('ogc:PropertyIsLessThan', context.namespaces))
+        etree.SubElement(el2, util.nspath_eval('ogc:PropertyName', context.namespaces)).text = pname
+        etree.SubElement(el2, util.nspath_eval('ogc:Literal', context.namespaces)).text = values[0]
+
+        el3 = etree.SubElement(el, util.nspath_eval('ogc:PropertyIsGreaterThanOrEqualTo', context.namespaces))
+        etree.SubElement(el3, util.nspath_eval('ogc:PropertyName', context.namespaces)).text = pname
+        etree.SubElement(el3, util.nspath_eval('ogc:Literal', context.namespaces)).text = values[1]
+
+    elif pvalue.startswith(']'):
+        # ]n1 equals to n1 < field
+        el = etree.Element(util.nspath_eval('ogc:PropertyIsGreaterThan', context.namespaces))
+        etree.SubElement(el, util.nspath_eval('ogc:PropertyName', context.namespaces)).text = pname
+        etree.SubElement(el, util.nspath_eval('ogc:Literal', context.namespaces)).text = pvalue.lstrip(']')
+
+    elif pvalue.endswith('['):
+        # n2[ equals to field < n2
+        el = etree.Element(util.nspath_eval('ogc:PropertyIsLessThan', context.namespaces))
+        etree.SubElement(el, util.nspath_eval('ogc:PropertyName', context.namespaces)).text = pname
+        etree.SubElement(el, util.nspath_eval('ogc:Literal', context.namespaces)).text = pvalue.rstrip('[')
+
+    else:
+        # n1 equal to field = n1
+        el = etree.Element(util.nspath_eval('ogc:PropertyIsEqualTo', context.namespaces))
+        etree.SubElement(el, util.nspath_eval('ogc:PropertyName', context.namespaces)).text = pname
+        etree.SubElement(el, util.nspath_eval('ogc:Literal', context.namespaces)).text = pvalue
+
+    return el
 
 def validate_4326(bbox_list):
     """Helper function to validate 4326."""

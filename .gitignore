@@ -15,6 +15,7 @@ tests/results
 .pytest_cache
 # sqlite
 **.db
+**/cite.db
 **.xml
 
 # test configurations
