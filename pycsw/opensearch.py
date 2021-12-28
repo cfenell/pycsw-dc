@@ -94,6 +94,8 @@ class OpenSearch(object):
         self.exml = element
         self.cfg = cfg
         self.bind_url = util.bind_url(self.cfg.get('server', 'url'))
+        if self.bind_url.endswith(('/opensearch', '/opensearch?')):
+            self.bind_url = self.bind_url.replace('/opensearch', '/csw')
 
         if version == '2.0.2':
             return self._csw2_2_os()
@@ -586,7 +588,7 @@ def kvp2filterxml(kvp, context, profiles, fes_version='1.0'):
             LOGGER.error(errortext)
 
     LOGGER.debug('Processing EO queryables')
-    if 'eo:parentidentifier' in kvp:
+    if not util.is_none_or_empty(kvp.get('eo:parentidentifier')):
         par_count += 1
         eo_parentidentifier_element = etree.Element(util.nspath_eval('ogc:PropertyIsEqualTo', context.namespaces))
         etree.SubElement(eo_parentidentifier_element,
@@ -594,7 +596,7 @@ def kvp2filterxml(kvp, context, profiles, fes_version='1.0'):
         etree.SubElement(eo_parentidentifier_element, util.nspath_eval(
             'ogc:Literal', context.namespaces)).text = kvp['eo:parentidentifier']
 
-    if 'eo:producttype' in kvp:
+    if not util.is_none_or_empty(kvp.get('eo:producttype')):
         par_count += 1
         eo_producttype_element = etree.Element(util.nspath_eval('ogc:PropertyIsLike', context.namespaces),
             matchCase='false', wildCard='*', singleChar='?', escapeChar='\\')
@@ -603,7 +605,7 @@ def kvp2filterxml(kvp, context, profiles, fes_version='1.0'):
         etree.SubElement(eo_producttype_element, util.nspath_eval(
             'ogc:Literal', context.namespaces)).text = '*eo:productType:%s*' % kvp['eo:producttype']
 
-    if 'eo:platform' in kvp:
+    if not util.is_none_or_empty(kvp.get('eo:platform')):
         par_count += 1
         eo_platform_element = etree.Element(util.nspath_eval('ogc:PropertyIsEqualTo', context.namespaces))
         etree.SubElement(eo_platform_element,
@@ -611,7 +613,7 @@ def kvp2filterxml(kvp, context, profiles, fes_version='1.0'):
         etree.SubElement(eo_platform_element, util.nspath_eval(
             'ogc:Literal', context.namespaces)).text = kvp['eo:platform']
 
-    if 'eo:processinglevel' in kvp:
+    if not util.is_none_or_empty(kvp.get('eo:processinglevel')):
         par_count += 1
         eo_processinglevel_element = etree.Element(util.nspath_eval('ogc:PropertyIsLike', context.namespaces),
             matchCase='false', wildCard='*', singleChar='?', escapeChar='\\')
@@ -620,7 +622,7 @@ def kvp2filterxml(kvp, context, profiles, fes_version='1.0'):
         etree.SubElement(eo_processinglevel_element, util.nspath_eval(
             'ogc:Literal', context.namespaces)).text = '*eo:processingLevel:%s*' % kvp['eo:processinglevel']
 
-    if 'eo:instrument' in kvp:
+    if not util.is_none_or_empty(kvp.get('eo:instrument')):
         par_count += 1
         eo_instrument_element = etree.Element(util.nspath_eval('ogc:PropertyIsEqualTo', context.namespaces))
         etree.SubElement(eo_instrument_element,
@@ -628,7 +630,7 @@ def kvp2filterxml(kvp, context, profiles, fes_version='1.0'):
         etree.SubElement(eo_instrument_element, util.nspath_eval(
             'ogc:Literal', context.namespaces)).text = kvp['eo:instrument']
 
-    if 'eo:sensortype' in kvp:
+    if not util.is_none_or_empty(kvp.get('eo:sensortype')):
         par_count += 1
         eo_sensortype_element = etree.Element(util.nspath_eval('ogc:PropertyIsEqualTo', context.namespaces))
         etree.SubElement(eo_sensortype_element,
@@ -636,11 +638,11 @@ def kvp2filterxml(kvp, context, profiles, fes_version='1.0'):
         etree.SubElement(eo_sensortype_element, util.nspath_eval(
             'ogc:Literal', context.namespaces)).text = kvp['eo:sensortype']
 
-    if 'eo:cloudcover' in kvp:
+    if not util.is_none_or_empty(kvp.get('eo:cloudcover')):
         par_count += 1
         eo_cloudcover_element = evaluate_literal(context, 'apiso:CloudCover', kvp['eo:cloudcover'])
 
-    if 'eo:snowcover' in kvp:
+    if not util.is_none_or_empty(kvp.get('eo:snowcover')):
         par_count += 1
         eo_snowcover_element = etree.Element(util.nspath_eval('ogc:PropertyIsLike', context.namespaces),
             matchCase='false', wildCard='*', singleChar='?', escapeChar='\\')
@@ -649,7 +651,7 @@ def kvp2filterxml(kvp, context, profiles, fes_version='1.0'):
         etree.SubElement(eo_snowcover_element, util.nspath_eval(
             'ogc:Literal', context.namespaces)).text = '*eo:snowCover:%s*' % kvp['eo:snowcover']
 
-    if 'eo:spectralrange' in kvp:
+    if not util.is_none_or_empty(kvp.get('eo:spectralrange')):
         par_count += 1
         eo_bands_element = etree.Element(util.nspath_eval('ogc:PropertyIsLike', context.namespaces),
             matchCase='false', wildCard='*', singleChar='?', escapeChar='\\')
@@ -658,7 +660,7 @@ def kvp2filterxml(kvp, context, profiles, fes_version='1.0'):
         etree.SubElement(eo_bands_element, util.nspath_eval(
             'ogc:Literal', context.namespaces)).text = '*%s*' % kvp['eo:spectralrange']
 
-    if 'eo:orbitnumber' in kvp:
+    if not util.is_none_or_empty(kvp.get('eo:orbitnumber')):
         par_count += 1
         eo_orbitnumber_element = etree.Element(util.nspath_eval('ogc:PropertyIsLike', context.namespaces),
             matchCase='false', wildCard='*', singleChar='?', escapeChar='\\')
@@ -667,7 +669,7 @@ def kvp2filterxml(kvp, context, profiles, fes_version='1.0'):
         etree.SubElement(eo_orbitnumber_element, util.nspath_eval(
             'ogc:Literal', context.namespaces)).text = '*eo:orbitNumber:%s*' % kvp['eo:orbitnumber']
 
-    if 'eo:orbitdirection' in kvp:
+    if not util.is_none_or_empty(kvp.get('eo:orbitdirection')):
         par_count += 1
         eo_orbitdirection_element = etree.Element(util.nspath_eval('ogc:PropertyIsLike', context.namespaces),
             matchCase='false', wildCard='*', singleChar='?', escapeChar='\\')

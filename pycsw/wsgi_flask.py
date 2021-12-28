@@ -64,6 +64,7 @@ def get_response(result: tuple):
     """
 
     headers, status, content = result
+
     response = make_response(content, status)
 
     if headers:
@@ -138,17 +139,25 @@ def queryables():
     return get_response(api_.queryables(dict(request.headers), request.args))
 
 
-@BLUEPRINT.route('/collections/metadata:main/items')
+@BLUEPRINT.route('/search', methods=['GET', 'POST'])
+@BLUEPRINT.route('/collections/metadata:main/items', methods=['GET', 'POST'])
 def items():
     """
     OGC API collection items endpoint
+    STAC API items search endpoint
 
     :returns: HTTP response
     """
 
-    return get_response(api_.items(dict(request.headers), request.args))
+    stac_item = False
+
+    if 'search' in request.url_rule.rule:
+        stac_item = True
+
+    return get_response(api_.items(dict(request.headers), request.json, dict(request.args), stac_item))
 
 
+@BLUEPRINT.route('/stac/collections/metadata:main/items/<item>')
 @BLUEPRINT.route('/collections/metadata:main/items/<item>')
 def item(item=None):
     """
@@ -159,7 +168,12 @@ def item(item=None):
     :returns: HTTP response
     """
 
-    return get_response(api_.item(dict(request.headers), request.args, item))
+    stac_item = False
+
+    if 'stac' in request.url_rule.rule:
+        stac_item = True
+
+    return get_response(api_.item(dict(request.headers), request.args, item, stac_item))
 
 
 @BLUEPRINT.route('/csw', methods=['GET', 'POST'])

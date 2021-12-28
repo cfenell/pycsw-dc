@@ -39,6 +39,8 @@ JSON and HTML output formats are both supported via the ``f`` parameter.
   http://localhost:8000/collections/metadata:main/items
   # collection query, full text search
   http://localhost:8000/collections/metadata:main/items?q=lorem
+  # collection query, full text search (multiple terms result in an exclusive (AND) search
+  http://localhost:8000/collections/metadata:main/items?q=lorem dolor
   # collection query, spatial query
   http://localhost:8000/collections/metadata:main/items?bbox=-142,42,-52,84
   # collection query, temporal query
@@ -50,11 +52,19 @@ JSON and HTML output formats are both supported via the ``f`` parameter.
   # collection query, property query
   http://localhost:8000/collections/metadata:main/items?title=Lorem%20ipsum
   # collection query, CQL filter
-  http://localhost:8000/collections/metadata:main/items?filter=title like "%lorem%"
+  http://localhost:8000/collections/metadata:main/items?filter=title LIKE '%lorem%'
   # collection query, limiting results
   http://localhost:8000/collections/metadata:main/items?limit=1
   # collection query, paging
   http://localhost:8000/collections/metadata:main/items?limit=10&startindex=10
+  # collection query, paging and sorting (default ascending)
+  http://localhost:8000/collections/metadata:main/items?limit=10&startindex=10&sortby=title
+  # collection query, paging and sorting (descending)
+  http://localhost:8000/collections/metadata:main/items?limit=10&startindex=10&sortby=-title
+  # collection query as CQL JSON (HTTP POST), as curl request
+  curl http://localhost:8000/collections/metadata:main/items --request POST -H "Content-Type: application/json" --data '{ "eq": [{ "property": "title" }, "Lorem ipsum"]}'
+  # collection query as CQL JSON (HTTP POST), limiting results, as curl request
+  curl http://localhost:8000/collections/metadata:main/items?limit=0 --request POST -H "Content-Type: application/json" --data '{ "eq": [{ "property": "title" }, "Lorem ipsum"]}'
 
   # collection item as GeoJSON
   http://localhost:8000/collections/metadata:main/items/{itemId}

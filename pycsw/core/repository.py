@@ -160,7 +160,7 @@ class Repository(object):
                 temp_dbtype = 'postgresql+postgis+native'
                 LOGGER.debug('PostgreSQL+PostGIS+Native detected')
             except Exception as err:
-                LOGGER.exception('PostgreSQL+PostGIS+Native not picked up: %s')
+                LOGGER.exception('PostgreSQL+PostGIS+Native not picked up: %s', table_name)
 
             # check if a native PostgreSQL FTS GIN index exists
             result = self.session.execute("select relname from pg_class where relname='fts_gin_idx'").scalar()
@@ -211,7 +211,11 @@ class Repository(object):
             'VARCHAR': 'string'
         }
 
-        properties = {}
+        properties = {
+            'geometry' : {
+                '$ref' : 'https://geojson.org/schema/Polygon.json'
+            }
+        }
 
         for i in self.dataset.__table__.columns:
             if i.name in ['anytext', 'metadata', 'metadata_type', 'xml']:
@@ -345,6 +349,10 @@ class Repository(object):
             anytext = getattr(self.dataset,
             self.context.md_core_model['mappings']['pycsw:AnyText'])
 
+            if isinstance(record.xml, bytes):
+                LOGGER.debug('Decoding bytes to unicode')
+                record.xml = record.xml.decode()
+
         if recprops is None and constraint is None:  # full update
             LOGGER.debug('full update')
             update_dict = dict([(getattr(self.dataset, key),
@@ -360,7 +368,7 @@ class Repository(object):
                 self.session.rollback()
                 msg = 'Cannot commit to repository'
                 LOGGER.exception(msg)
-                raise RuntimeError(msg)
+                raise RuntimeError(msg) from err
         else:  # update based on record properties
             LOGGER.debug('property based update')
             try:
@@ -395,7 +403,7 @@ class Repository(object):
                 self.session.rollback()
                 msg = 'Cannot commit to repository'
                 LOGGER.exception(msg)
-                raise RuntimeError(msg)
+                raise RuntimeError(msg) from err
 
     def delete(self, constraint):
         ''' Delete a record from the repository '''
@@ -425,7 +433,7 @@ class Repository(object):
             self.session.rollback()
             msg = 'Cannot commit to repository'
             LOGGER.exception(msg)
-            raise RuntimeError(msg)
+            raise RuntimeError(msg) from err
 
         return rows
 
@@ -533,8 +541,8 @@ def update_xpath(nsmap, xml, recprop):
                 if node1.text != recprop['value']:  # values differ, update
                     node1.text = recprop['value']
     except Exception as err:
-        LOGGER.warning(err)
-        raise RuntimeError('ERROR: %s' % str(err))
+        LOGGER.warning('update_xpath error', exc_info=True)
+        raise RuntimeError('ERROR: %s' % str(err)) from err
 
     return etree.tostring(xml)
 
@@ -573,7 +581,7 @@ def get_spatial_overlay_rank(target_geometry, query_geometry):
                 LOGGER.debug('Spatial Rank: %s', str(((X/Q)**kq)*((X/T)**kt)))
                 return str(((X/Q)**kq)*((X/T)**kt))
         except Exception as err:
-            LOGGER.warning('Cannot derive spatial overlay ranking %s', err)
+            LOGGER.warning('Cannot derive spatial overlay ranking', exc_info=True)
             return '0'
     return '0'
 
